@@ -1,119 +1,137 @@
-import csv
 import os
+import csv
 import time
-from datetime import datetime
-
 import pyarrow.dataset as ds
-import pyarrow.compute as pc
 
 
-CURATED_DIR = "data/curated"
-RESULTS_FILE = "results.csv"
+# ===== CONFIG =====
 
-LAYOUTS = {
-    "flat": "data/curated/flat",
-    "by_date": "data/curated/by_date",
-    "by_region": "data/curated/by_region",
-    "by_date_region": "data/curated/by_date_region",
-}
+BASE_DIR = "data/curated"   # dossier où sont les datasets
+SIZES = ["S", "M", "L"]     # tailles à tester
+LAYOUTS = ["flat", "by_date", "by_region"]  # layouts à comparer
+RESULTS_FILE = "results.csv"  # fichier de sortie
 
 
-def list_files_and_size(path):
-    start = time.perf_counter()
+# ===== FILE METRICS =====
+
+def count_files_and_bytes(path):
+    # mesure le temps pour parcourir les fichiers
+    start = time.time()
 
     file_count = 0
-    total_size = 0
+    total_bytes = 0
 
+    # parcourt tous les fichiers du dossier
     for root, dirs, files in os.walk(path):
         for file in files:
             if file.endswith(".parquet"):
                 file_count += 1
-                full_path = os.path.join(root, file)
-                total_size += os.path.getsize(full_path)
+                total_bytes += os.path.getsize(os.path.join(root, file))
 
-    end = time.perf_counter()
+    listing_time = time.time() - start
 
-    return file_count, total_size, end - start
+    return listing_time, file_count, total_bytes
 
 
-def run_query(path, query_type):
-    dataset = ds.dataset(path, format="parquet", partitioning="hive")
+# ===== DATASET LOADING =====
 
-    if query_type == "selective":
-        filter_expr = (
-            (pc.field("region") == "EU") &
-            (pc.field("ts") >= datetime(2026, 1, 5)) &
-            (pc.field("ts") <= datetime(2026, 1, 10))
-        )
+def load_dataset(path):
+    # charge le dataset parquet
+    # "hive" permet de lire les partitions (region=..., date=...)
+    return ds.dataset(path, format="parquet", partitioning="hive")
 
-    elif query_type == "broad":
-        filter_expr = (
-            (pc.field("ts") >= datetime(2026, 1, 1)) &
-            (pc.field("ts") <= datetime(2026, 1, 31))
-        )
 
-    else:
-        raise ValueError("Unknown query type")
+# ===== QUERIES =====
 
-    start = time.perf_counter()
+def run_selective_query(path):
+    # requête avec filtre (rapide si partitionnement utile)
+    dataset = load_dataset(path)
+
+    start = time.time()
 
     table = dataset.to_table(
-        filter=filter_expr,
+        filter=(
+            (ds.field("region") == "Zurich") &
+            (ds.field("date") >= "2026-01-10") &
+            (ds.field("date") <= "2026-01-12")
+        ),
+        columns=["event_type", "value"]  # lire seulement colonnes utiles
+    )
+
+    query_time = time.time() - start
+
+    return query_time, table.num_rows
+
+
+def run_broad_query(path):
+    # requête large (scan tout le dataset)
+    dataset = load_dataset(path)
+
+    start = time.time()
+
+    table = dataset.to_table(
         columns=["event_type", "value"]
     )
 
-    result = table.group_by("event_type").aggregate([
-        ("value", "count"),
-        ("value", "mean"),
-    ])
+    query_time = time.time() - start
 
-    end = time.perf_counter()
+    return query_time, table.num_rows
 
-    return end - start, result.num_rows
 
+# ===== MAIN BENCH =====
 
 def main():
-    rows = []
+    results = []
 
-    for layout_name, path in LAYOUTS.items():
-        print(f"\nBenchmarking layout: {layout_name}")
+    print("Starting benchmark...\n")
 
-        file_count, total_size, listing_time = list_files_and_size(path)
+    # boucle sur tailles et layouts
+    for size in SIZES:
+        for layout in LAYOUTS:
+            path = os.path.join(BASE_DIR, size, layout)
 
-        for query_type in ["selective", "broad"]:
-            print(f"  Running query: {query_type}")
+            print(f"=== {size} - {layout} ===")
 
-            query_time, result_rows = run_query(path, query_type)
+            if not os.path.exists(path):
+                print("Path missing")
+                continue
 
-            rows.append({
-                "layout": layout_name,
-                "query_type": query_type,
+            # 1. listing (nombre fichiers + temps)
+            listing_time, file_count, total_bytes = count_files_and_bytes(path)
+
+            # 2. requête selective
+            sel_time, sel_rows = run_selective_query(path)
+
+            # 3. requête large
+            broad_time, broad_rows = run_broad_query(path)
+
+            # afficher résultats
+            print(f"Listing: {listing_time:.4f}s | files: {file_count}")
+            print(f"Selective: {sel_time:.4f}s | rows: {sel_rows}")
+            print(f"Broad: {broad_time:.4f}s | rows: {broad_rows}")
+            print()
+
+            # stocker résultats pour CSV
+            results.append({
+                "size": size,
+                "layout": layout,
+                "listing_time_s": listing_time,
                 "file_count": file_count,
-                "total_size_mb": total_size / 1_000_000,
-                "listing_time_sec": listing_time,
-                "query_time_sec": query_time,
-                "result_rows": result_rows,
+                "total_size_gb": total_bytes / 1e9,
+                "selective_time_s": sel_time,
+                "selective_rows": sel_rows,
+                "broad_time_s": broad_time,
+                "broad_rows": broad_rows,
             })
 
+    # ===== WRITE CSV =====
+
     with open(RESULTS_FILE, "w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "layout",
-                "query_type",
-                "file_count",
-                "total_size_mb",
-                "listing_time_sec",
-                "query_time_sec",
-                "result_rows",
-            ]
-        )
-
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(results)
 
-    print("\nBenchmark finished!")
-    print(f"Results saved to: {RESULTS_FILE}")
+    print("Results saved to results.csv")
 
 
 if __name__ == "__main__":

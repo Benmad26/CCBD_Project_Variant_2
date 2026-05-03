@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+
 REGIONS = ["Zurich", "Geneva", "Lausanne", "Basel", "Bern"]
 
 EVENT_TYPES = [
@@ -14,16 +15,17 @@ EVENT_TYPES = [
     "courier_assigned",
     "courier_pickup",
     "delivery_completed",
-    "order_cancelled"
+    "order_cancelled",
 ]
 
-SIZES = {
-    "S": 1_050_000,     # ≈ 5M lignes
-    "M": 5_260_000,     # ≈ 25M lignes
-    "L": 21_050_000     # ≈ 100M lignes
+ROW_COUNTS = {
+    "S": 5_000_000,
+    "M": 25_000_000,
+    "L": 100_000_000,
 }
 
-def generate_orders(num_orders: int, seed: int = 42):
+
+def generate_batch(num_rows: int, seed: int) -> pa.Table:
     random.seed(seed)
 
     start_date = datetime(2026, 1, 1)
@@ -33,82 +35,20 @@ def generate_orders(num_orders: int, seed: int = 42):
     regions = []
     event_types = []
     values = []
-    order_ids = []
 
-    for order_id in range(1, num_orders + 1):
-        user_id = random.randint(1, 1_000_000)
-        region = random.choice(REGIONS)
-        value = random.random() * 100
+    for _ in range(num_rows):
+        ts = start_date + timedelta(
+            days=random.randint(0, 30),
+            seconds=random.randint(0, 86_400),
+        )
 
-        random_days = random.randint(0, 30)
-        random_seconds = random.randint(0, 86400)
-        order_time = start_date + timedelta(days=random_days, seconds=random_seconds)
+        timestamps.append(ts)
+        user_ids.append(random.randint(1, 1_000_000))
+        regions.append(random.choice(REGIONS))
+        event_types.append(random.choice(EVENT_TYPES))
+        values.append(round(random.uniform(5, 100), 2))
 
-        is_cancelled = random.random() < 0.10
-
-        events = ["order_placed"]
-        times = [order_time]
-
-        if not is_cancelled:
-            t = order_time
-
-            t += timedelta(minutes=random.randint(1, 10))
-            events.append("restaurant_accepted")
-            times.append(t)
-
-            t += timedelta(minutes=random.randint(1, 15))
-            events.append("courier_assigned")
-            times.append(t)
-
-            t += timedelta(minutes=random.randint(5, 20))
-            events.append("courier_pickup")
-            times.append(t)
-
-            t += timedelta(minutes=random.randint(5, 30))
-            events.append("delivery_completed")
-            times.append(t)
-
-        else:
-            t = order_time
-            r = random.random()
-
-            if r < 0.7:
-                t += timedelta(minutes=random.randint(1, 5))
-                events.append("order_cancelled")
-                times.append(t)
-
-            elif r < 0.8:
-                t += timedelta(minutes=random.randint(1, 10))
-                events.append("restaurant_accepted")
-                times.append(t)
-
-                t += timedelta(minutes=random.randint(1, 5))
-                events.append("order_cancelled")
-                times.append(t)
-
-            else:
-                t += timedelta(minutes=random.randint(1, 10))
-                events.append("restaurant_accepted")
-                times.append(t)
-
-                t += timedelta(minutes=random.randint(1, 15))
-                events.append("courier_assigned")
-                times.append(t)
-
-                t += timedelta(minutes=random.randint(1, 40))
-                events.append("order_cancelled")
-                times.append(t)
-
-        for event, ts in zip(events, times):
-            order_ids.append(order_id)
-            timestamps.append(ts)
-            user_ids.append(user_id)
-            regions.append(region)
-            event_types.append(event)
-            values.append(value)
-
-    table = pa.table({
-        "order_id": pa.array(order_ids, type=pa.int64()),
+    return pa.table({
         "ts": pa.array(timestamps, type=pa.timestamp("ms")),
         "user_id": pa.array(user_ids, type=pa.int64()),
         "region": pa.array(regions, type=pa.string()),
@@ -116,33 +56,59 @@ def generate_orders(num_orders: int, seed: int = 42):
         "value": pa.array(values, type=pa.float64()),
     })
 
-    return table
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--size", choices=["S", "M", "L"], default="S")
-    parser.add_argument("--output-dir", type=str, default="data")
+    parser.add_argument("--output-dir", default="data")
+    parser.add_argument("--batch-size", type=int, default=500_000)
+    parser.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args()
 
-    num_orders = SIZES[args.size]
-
+    total_rows = ROW_COUNTS[args.size]
     os.makedirs(args.output_dir, exist_ok=True)
-
-    table = generate_orders(num_orders)
 
     output_path = os.path.join(args.output_dir, f"dataset_{args.size}.parquet")
 
-    pq.write_table(
-        table,
-        output_path,
-        compression="snappy"
-    )
+    writer = None
+    written_rows = 0
+    batch_id = 0
 
-    print(f"Dataset generated successfully")
-    print(f"Size: {args.size}")
-    print(f"Number of orders: {num_orders}")
-    print(f"Output: {output_path}")
+    while written_rows < total_rows:
+        rows_this_batch = min(args.batch_size, total_rows - written_rows)
+
+        table = generate_batch(
+            num_rows=rows_this_batch,
+            seed=args.seed + batch_id,
+        )
+
+        if writer is None:
+            writer = pq.ParquetWriter(
+                output_path,
+                table.schema,
+                compression="snappy",
+            )
+
+        writer.write_table(table)
+
+        written_rows += rows_this_batch
+        batch_id += 1
+
+        print(f"Wrote {written_rows:,}/{total_rows:,} rows")
+
+    if writer:
+        writer.close()
+
+    size_gb = os.path.getsize(output_path) / 1e9
+
+    print("\nDataset generated successfully")
+    print("Concept: Uber Eats-like event logs")
+    print(f"Size label: {args.size}")
+    print(f"Rows: {written_rows:,}")
+    print(f"Stored Parquet size: {size_gb:.2f} GB")
+    print(f"Output: {os.path.abspath(output_path)}")
+
 
 if __name__ == "__main__":
     main()
