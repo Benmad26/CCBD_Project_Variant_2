@@ -1,0 +1,10 @@
+size,layout,s3_prefix,s3_listing_time_s,object_count,total_size_gb
+S,flat,curated/ubereats/S/flat/,0.11946654319763184,1,0.096494394
+S,by_date,curated/ubereats/S/by_date/,0.055577993392944336,31,0.106109586
+S,by_region,curated/ubereats/S/by_region/,0.013098478317260742,5,0.102930972
+M,flat,curated/ubereats/M/flat/,0.007169008255004883,1,0.482487536
+M,by_date,curated/ubereats/M/by_date/,0.04393434524536133,32,0.530542655
+M,by_region,curated/ubereats/M/by_region/,0.014774322509765625,5,0.514636909
+L,flat,curated/ubereats/L/flat/,0.006269693374633789,1,1.929903947
+L,by_date,curated/ubereats/L/by_date/,0.04637026786804199,32,2.122149053
+L,by_region,curated/ubereats/L/by_region/,0.015181541442871094,5,2.058651594
