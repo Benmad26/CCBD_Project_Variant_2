@@ -7,7 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 
-REGIONS = ["Zurich", "Geneva", "Lausanne", "Basel", "Bern"]
+REGIONS = ["Zurich", "Geneva", "Lausanne", "Basel", "Bern"] #comment
 
 EVENT_TYPES = [
     "order_placed",
