@@ -12,7 +12,7 @@ from datetime import datetime
 # ===== CONFIG =====
 
 # Dossier local où sont stockés les datasets curated (générés par make_layouts.py)
-BASE_DIR = "data/curated"
+BASE_DIR = "data2/curated"
 
 # Tailles et layouts à benchmarker
 SIZES = ["S", "M", "L"]
@@ -245,7 +245,7 @@ def main():
                 s3_key = f"bench_tmp/{size}_{layout}_sample.parquet"
                 try:
                     upload_throughput = measure_upload_throughput(sample_file, s3_key)
-                    download_throughput = measure_download_throughput(s3_key, "/tmp/bench_download.parquet")
+                    download_throughput = measure_download_throughput(s3_key, os.path.join(os.environ["TEMP"], "bench_download.parquet"))
                 except Exception:
                     pass
 
