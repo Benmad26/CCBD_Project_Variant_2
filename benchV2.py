@@ -5,6 +5,8 @@ import argparse
 import boto3
 import pyarrow.dataset as ds
 import pyarrow.compute as pc
+import pyarrow as pa 
+from datetime import datetime
 
 
 # ===== CONFIG =====
@@ -25,9 +27,12 @@ s3 = boto3.client(
     "s3",
     endpoint_url="http://localhost:9000",
     aws_access_key_id="minioadmin",
-    aws_secret_access_key="minioadmin"
+    aws_secret_access_key="minioadmin",
+    config=boto3.session.Config(
+        connect_timeout=2,
+        retries={"max_attempts": 0}
+    )
 )
-
 
 # ===== ARGPARSE =====
 
@@ -120,18 +125,33 @@ def measure_download_throughput(s3_key, local_path):
 
 # Requête sélective : filtre sur une région et une plage de dates
 # Ne lit pas tout le fichier (partition pruning) si le layout est by_region ou by_date
+# Pour le layout flat, filtre sur ts directement (pas de colonne date)
 # Calcule ensuite un group by event_type avec count et mean de value
 # Retourne : (temps d'exécution, nombre de lignes, résultat groupé)
 
-def run_selective_query(path, region, date_start, date_end):
+def run_selective_query(path, region, date_start, date_end, layout):
     dataset = ds.dataset(path, format="parquet", partitioning="hive")
     start = time.time()
-    table = dataset.to_table(
-        filter=(
+
+    if layout == "flat":
+        # flat n'a pas de colonne date, on filtre sur ts directement
+        ts_start = datetime.strptime(date_start, "%Y-%m-%d")
+        ts_end = datetime.strptime(date_end, "%Y-%m-%d")
+        filter_expr = (
+            (ds.field("region") == region) &
+            (ds.field("ts") >= ts_start) &
+            (ds.field("ts") <= ts_end)
+        )
+    
+    else:
+        filter_expr = (
             (ds.field("region") == region) &
             (ds.field("date") >= date_start) &
             (ds.field("date") <= date_end)
-        ),
+        )
+
+    table = dataset.to_table(
+        filter=filter_expr,
         columns=["event_type", "value"]
     )
 
@@ -233,7 +253,7 @@ def main():
             sel_times = []
             sel_rows = None
             for _ in range(args.runs):
-                t, rows, _ = run_selective_query(path, args.region, args.date_start, args.date_end)
+                t, rows, _ = run_selective_query(path, args.region, args.date_start, args.date_end, layout)
                 sel_times.append(t)
                 sel_rows = rows
             sel_time = median(sel_times)
@@ -249,9 +269,9 @@ def main():
 
             # Affichage des résultats
             print(f"Local listing:      {listing_time:.4f}s | files: {file_count}")
-            print(f"S3 listing:         {s3_listing_time}s | objects: {s3_object_count}")
-            print(f"Upload throughput:  {upload_throughput} MB/s")
-            print(f"Download throughput:{download_throughput} MB/s")
+            print(f"S3 listing:         {s3_listing_time if s3_listing_time else 'N/A'}s | objects: {s3_object_count if s3_object_count else 'N/A'}")
+            print(f"Upload throughput:  {upload_throughput if upload_throughput else 'N/A'} MB/s")
+            print(f"Download throughput:{download_throughput if download_throughput else 'N/A'} MB/s")
             print(f"Selective query:    {sel_time:.4f}s | rows: {sel_rows}")
             print(f"Broad query:        {broad_time:.4f}s | rows: {broad_rows}")
             print()
