@@ -5,7 +5,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-
+# Available regions in the dataset (Swiss cities)
 REGIONS = np.array([
     "Zurich",
     "Geneva",
@@ -14,6 +14,7 @@ REGIONS = np.array([
     "Bern",
 ])
 
+# Event types simulating a food delivery service (Uber Eats-like)
 EVENT_TYPES = np.array([
     "order_placed",
     "restaurant_accepted",
@@ -23,21 +24,25 @@ EVENT_TYPES = np.array([
     "order_cancelled",
 ])
 
+# Number of rows per dataset size
+# small, medium, large
 ROW_COUNTS = {
     "S": 5_000_000,
     "M": 25_000_000,
     "L": 100_000_000,
 }
 
-
+# ===== BATCH GENERATION =====
+# Generates one batch of rows using NumPy (faster than a Python loop)
+# Each column has a fixed type (int, string, float, timestamp)
 def generate_batch(num_rows: int, seed: int) -> pa.Table:
     rng = np.random.default_rng(seed)
 
     start_date = np.datetime64("2026-01-01T00:00:00", "ms")
 
+    # Generate random days and seconds, combine into timestamps
     days = rng.integers(0, 31, size=num_rows)
     seconds = rng.integers(0, 86_401, size=num_rows)
-
     timestamps = (
         start_date
         + days.astype("timedelta64[D]")
@@ -63,6 +68,7 @@ def generate_batch(num_rows: int, seed: int) -> pa.Table:
         size=num_rows,
     )
 
+    # Pick random regions
     regions = REGIONS[region_indices]
     event_types = EVENT_TYPES[event_indices]
 
@@ -79,6 +85,9 @@ def generate_batch(num_rows: int, seed: int) -> pa.Table:
         "value": pa.array(values, type=pa.float64()),
     })
 
+# ===== MAIN =====
+# Generates the full dataset in batches and writes it to a Parquet file
+# Each batch uses a different seed to avoid identical data across batches
 
 def main():
     parser = argparse.ArgumentParser()
@@ -121,6 +130,7 @@ def main():
     written_rows = 0
     batch_id = 0
 
+    # Write the dataset batch by batch to avoid loading everything into RAM
     while written_rows < total_rows:
         rows_this_batch = min(
             args.batch_size,
@@ -131,7 +141,8 @@ def main():
             num_rows=rows_this_batch,
             seed=args.seed + batch_id,
         )
-
+        
+        # Initialize the Parquet writer on the first batch
         if writer is None:
             writer = pq.ParquetWriter(
                 output_path,
