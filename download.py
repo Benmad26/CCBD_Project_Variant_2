@@ -3,10 +3,10 @@ import boto3
 
 # ===== CONFIG =====
 
-# Nom du bucket MinIO
+# MinIO bucket name
 BUCKET = "ccbd"
 
-# Connexion à MinIO (S3 local)
+# Connection to MinIO (local S3)
 s3 = boto3.client(
     "s3",
     endpoint_url="http://localhost:9000",
@@ -16,11 +16,11 @@ s3 = boto3.client(
 
 
 # ===== DOWNLOAD =====
-# Télécharge tous les fichiers d'un préfixe S3 vers un dossier local
-# Utilise un paginator pour gérer les grands nombres d'objets (>1000)
-# Recrée la structure de dossiers localement
-# - s3_prefix : chemin dans le bucket (ex: curated/ubereats/S/flat)
-# - local_dir : dossier local de destination (ex: data2/curated/S/flat)
+# Downloads all files from an S3 prefix to a local folder
+# Uses a paginator to handle large numbers of objects (>1000)
+# Recreates the folder structure locally
+# - s3_prefix : path in the bucket (ex: curated/ubereats/S/flat)
+# - local_dir : local destination folder (ex: data/curated/S/flat)
 
 def download_directory(s3_prefix, local_dir):
     paginator = s3.get_paginator("list_objects_v2")
@@ -29,31 +29,29 @@ def download_directory(s3_prefix, local_dir):
         for obj in page.get("Contents", []):
             s3_key = obj["Key"]
 
-            # chemin relatif par rapport au préfixe S3
+            # relative path from the S3 prefix
             # ex: curated/ubereats/S/flat/part0.parquet → part0.parquet
             relative_path = s3_key[len(s3_prefix):].lstrip("/")
             local_path = os.path.join(local_dir, relative_path)
 
-            # crée les sous-dossiers si nécessaire (ex: date=2026-01-10/)
+            # create subfolders if needed (ex: date=2026-01-10/)
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
-            # téléchargement du fichier
+            # download the file
             s3.download_file(BUCKET, s3_key, local_path)
             print(f"{s3_key} → {local_path}")
 
 
 # ===== MAIN =====
-# Télécharge les 3 layouts (flat, by_date, by_region) pour les 3 tailles (S, M, L)
-# Structure S3 source :
+# Downloads the 3 layouts (flat, by_date, by_region) for all sizes (S, M, L)
+# S3 source structure:
 #   curated/ubereats/S/flat/...
 #   curated/ubereats/S/by_date/...
 #   curated/ubereats/S/by_region/...
-#   ...
-# Structure locale destination :
-#   data2/curated/S/flat/...
-#   data2/curated/S/by_date/...
-#   data2/curated/S/by_region/...
-#   ...
+# Local destination structure:
+#   data/curated/S/flat/...
+#   data/curated/S/by_date/...
+#   data/curated/S/by_region/...
 
 def main():
     for size in ["S", "M", "L"]:
@@ -64,7 +62,7 @@ def main():
             print(f"\nDownloading curated/{size}/{layout}...")
             download_directory(s3_prefix, local_dir)
 
-    print("\nDownload terminé !")
+    print("\nDownload complete!")
 
 
 if __name__ == "__main__":
