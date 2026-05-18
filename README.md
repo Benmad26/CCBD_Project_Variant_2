@@ -38,16 +38,15 @@ pip install pyarrow boto3 numpy pandas matplotlib
 
 ---
 
-## MinIO Setup (Object Storage)
-
-Download and run MinIO directly (no Docker required). Download the binary for your OS from https://min.io/download, then:
-
+### Step 3 – Upload to MinIO
+ 
 ```bash
-# Linux example
-wget https://dl.min.io/server/minio/release/linux-amd64/minio
-chmod +x minio
-MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin ./minio server ./minio-data --console-address ":9001"
+python upload.py
 ```
+ 
+Reads layouts from `data2/curated/<size>/<layout>/` and uploads them to the bucket under `curated/ubereats/<size>/<layout>/`.
+ 
+> **Note:** `upload.py` reads from `data2/curated/` (output of `make_layouts.py` when using `--output-dir data2`). Make sure Step 2 used the same output directory.
 
 Once running, create the `ccbd` bucket via the MinIO console at http://localhost:9001 (login: minioadmin / minioadmin).
 
