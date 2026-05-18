@@ -110,7 +110,7 @@ Reads layouts from `data2/curated/<size>/<layout>/` and uploads them to the buck
 ### Step 4 – Run the benchmark
 
 ```bash
-python bench.py --size all --region Zurich --date-start 2026-01-10 --date-end 2026-01-12 --runs 3
+python bench.py 
 ```
 
 This runs the full benchmark suite for all sizes and layouts and writes `results.csv`.
