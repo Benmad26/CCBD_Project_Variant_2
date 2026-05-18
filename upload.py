@@ -4,7 +4,7 @@ import boto3
 # bucket MinIO
 BUCKET = "ccbd"
 
-# connexion à MinIO (S3 local)
+# Connection to MinIO (local S3-compatible storage)
 s3 = boto3.client(
     "s3",
     endpoint_url="http://localhost:9000",
@@ -12,12 +12,13 @@ s3 = boto3.client(
     aws_secret_access_key="minioadmin"
 )
 
+# UPLOAD
+
+# Uploads all files from a local folder to S3
+# Recreates the folder structure in the bucket
+# - local_dir: local source folder
+# - s3_prefix: destination path in the bucket
 def upload_directory(local_dir, s3_prefix):
-    """
-    Upload tous les fichiers d'un dossier vers S3.
-    - local_dir : dossier local
-    - s3_prefix : chemin dans le bucket
-    """
     for root, dirs, files in os.walk(local_dir):
         for file in files:
             local_path = os.path.join(root, file)
@@ -28,28 +29,23 @@ def upload_directory(local_dir, s3_prefix):
             print(f"{local_path} → {s3_path}")
 
 
+# MAIN
+# Uploads the 3 layouts (flat, by_date, by_region) for all sizes (S, M, L)
+# to curated/ubereats/<size>/<layout>/ in the bucket
 def main():
-    """
-    Upload curated (flat, by_date, by_region) pour S/M/L
-    Structure S3 :
-      curated/ubereats/S/flat/...
-      curated/ubereats/S/by_date/...
-      curated/ubereats/S/by_region/...
-      ...
-    """
     for size in ["S", "M", "L"]:
         for layout in ["flat", "by_date", "by_region"]:
-            local_dir = f"data2/curated/{size}/{layout}"
+            local_dir = f"data/curated/{size}/{layout}"
             s3_prefix = f"curated/ubereats/{size}/{layout}"
 
             if not os.path.exists(local_dir):
-                print(f"Dossier manquant, ignoré : {local_dir}")
+                print(f"Missing folder, skipping : {local_dir}")
                 continue
 
             print(f"\nUploading curated/{size}/{layout}...")
             upload_directory(local_dir, s3_prefix)
 
-    print("\nUpload terminé !")
+    print("\nUpload complete!")
 
 
 if __name__ == "__main__":
