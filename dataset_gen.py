@@ -32,7 +32,7 @@ ROW_COUNTS = {
     "L": 100_000_000,
 }
 
-# ===== BATCH GENERATION =====
+# BATCH GENERATION
 # Generates one batch of rows using NumPy (faster than a Python loop)
 # Each column has a fixed type (int, string, float, timestamp)
 def generate_batch(num_rows: int, seed: int) -> pa.Table:
@@ -85,7 +85,7 @@ def generate_batch(num_rows: int, seed: int) -> pa.Table:
         "value": pa.array(values, type=pa.float64()),
     })
 
-# ===== MAIN =====
+# MAIN
 # Generates the full dataset in batches and writes it to a Parquet file
 # Each batch uses a different seed to avoid identical data across batches
 
@@ -100,7 +100,7 @@ def main():
 
     parser.add_argument(
         "--output-dir",
-        default="data2",
+        default="data",
     )
 
     parser.add_argument(
