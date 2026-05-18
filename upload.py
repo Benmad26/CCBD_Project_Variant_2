@@ -39,7 +39,7 @@ def main():
     """
     for size in ["S", "M", "L"]:
         for layout in ["flat", "by_date", "by_region"]:
-            local_dir = f"data2/curated/{size}/{layout}"
+            local_dir = f"data/curated/{size}/{layout}"
             s3_prefix = f"curated/ubereats/{size}/{layout}"
 
             if not os.path.exists(local_dir):
