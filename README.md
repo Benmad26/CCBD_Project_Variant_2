@@ -159,20 +159,7 @@ Downloads all layouts from MinIO to `data_down/curated/<size>/<layout>/`.
 ├── README.md           # This file
 ```
 
----
 
-## Key Results (from results.csv)
-
-| Metric | Best layout | Worst layout |
-|---|---|---|
-| Selective query (size L) | by_region: **1.63 s** | flat: 5.12 s |
-| Broad query (size L) | flat: **3.98 s** | by_date: 27.72 s |
-| S3 listing (size L) | flat: **0.008 s** | by_date: 33.04 s |
-| Upload throughput (size L) | flat: **246 MB/s** | by_date: 8.3 MB/s |
-
-**Recommendation:** Use `by_region` for selective analytical queries (3.1× faster than flat). Use `flat` for broad scans or bulk transfers. Avoid `by_date` at large scale without compaction (33 s listing, 27.7 s full scan at size L).
-
----
 
 ## Notes
 
