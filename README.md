@@ -33,7 +33,7 @@ Metrics measured: S3 listing time, upload/download throughput, selective query t
 Install all Python dependencies at once:
 
 ```bash
-pip install pyarrow boto3 numpy pandas matplotlib
+pip install pyarrow boto3 numpy pandas matplotlib ipywidgets jupyter
 ```
 
 ---
