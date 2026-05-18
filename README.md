@@ -135,7 +135,7 @@ jupyter notebook analysis.ipynb
 
 The notebook loads `results.csv` and produces all plots and tables. It must be run after Step 4.
 
-### Step 6 – (Optional) Download from MinIO
+### Step 6 – Download from MinIO
 
 ```bash
 python download.py
