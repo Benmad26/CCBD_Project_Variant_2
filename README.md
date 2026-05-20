@@ -38,28 +38,7 @@ pip install pyarrow boto3 numpy pandas matplotlib ipywidgets jupyter
 
 ---
 
-### Step 3 – Upload to MinIO
- 
-```bash
-python upload.py
-```
- 
-Reads layouts from `data2/curated/<size>/<layout>/` and uploads them to the bucket under `curated/ubereats/<size>/<layout>/`.
- 
-> **Note:** `upload.py` reads from `data2/curated/` (output of `make_layouts.py` when using `--output-dir data2`). Make sure Step 2 used the same output directory.
 
-Once running, create the `ccbd` bucket via the MinIO console at http://localhost:9001 (login: minioadmin / minioadmin).
-
-**Endpoint configuration used in all scripts:**
-
-| Parameter | Value |
-|---|---|
-| Endpoint URL | http://localhost:9000 |
-| Access key | minioadmin |
-| Secret key | minioadmin |
-| Bucket | ccbd |
-
----
 
 ## How to Reproduce Results
 
