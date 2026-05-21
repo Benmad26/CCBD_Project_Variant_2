@@ -82,9 +82,9 @@ Optional: control batch size with `--batch-size 500000`.
 python upload.py
 ```
 
-Reads layouts from `data2/curated/<size>/<layout>/` and uploads them to the bucket under `curated/ubereats/<size>/<layout>/`.
+Reads layouts from `data/curated/<size>/<layout>/` and uploads them to the bucket under `curated/ubereats/<size>/<layout>/`.
 
-> **Note:** `upload.py` reads from `data2/curated/` (output of `make_layouts.py` when using `--output-dir data2`). Make sure Step 2 used the same output directory.
+> **Note:** `upload.py` reads from `data/curated/` (output of `make_layouts.py` when using `--output-dir data`). Make sure Step 2 used the same output directory.
 
 ### Step 4 – Run the benchmark
 
