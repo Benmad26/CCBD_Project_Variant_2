@@ -114,6 +114,9 @@ jupyter notebook analysis.ipynb
 
 The notebook loads `results.csv` and produces all plots and tables. It must be run after Step 4.
 
+> **Note:** `analysis.ipynb` contains static plots visible directly on GitHub.
+> For interactive charts with filters and dropdowns, open `analysis_interactive.ipynb` locally with Jupyter — interactive plots are not supported by GitHub.
+
 ### Step 6 – Download from MinIO
 
 ```bash
