@@ -37,6 +37,49 @@ pip install pyarrow boto3 numpy pandas matplotlib jupyter
 ```
 
 ---
+ 
+## MinIO Setup (Object Storage)
+ 
+### 1. Download MinIO for Windows
+ 
+Go to https://min.io/download, select **Windows**, and download `minio.exe`.  
+Place it in a folder of your choice, e.g. `C:\minio\`.
+ 
+### 2. Start MinIO
+ 
+Open **PowerShell** in the folder where `minio.exe` is located (e.g. `C:\Users\<you>\Downloads`) and run:
+ 
+```powershell
+$env:MINIO_ROOT_USER="minioadmin"
+$env:MINIO_ROOT_PASSWORD="minioadmin"
+.\minio.exe server C:\minio\data --console-address ":9001"
+```
+ 
+MinIO is now running. **Leave this window open** — closing it stops the server.  
+Open a **second PowerShell window** to run the project scripts.
+ 
+### 3. Create the bucket
+ 
+Open your browser and go to http://localhost:9001  
+Login with:
+- **Username:** minioadmin
+- **Password:** minioadmin
+Click **Buckets → Create Bucket**, name it `ccbd`, and click **Create**.
+ 
+### 4. Verify
+ 
+You should see the `ccbd` bucket in the console. The S3 API is available at http://localhost:9000.
+ 
+**Endpoint configuration used in all scripts:**
+ 
+| Parameter | Value |
+|---|---|
+| Endpoint URL | http://localhost:9000 |
+| Access key | minioadmin |
+| Secret key | minioadmin |
+| Bucket | ccbd |
+ 
+---
 
 
 
