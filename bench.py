@@ -138,7 +138,7 @@ def run_selective_query(path, region, date_start, date_end, layout):
     if layout == "flat":
         # flat has no date column, filter on ts directly
         ts_start = datetime.strptime(date_start, "%Y-%m-%d")
-        ts_end = datetime.strptime(date_end, "%Y-%m-%d")
+        ts_end = datetime.strptime(date_end, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
         filter_expr = (
             (ds.field("region") == region) &
             (ds.field("ts") >= ts_start) &
