@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument("--date-end", default="2026-01-12")
 
     # Number of runs to compute the median
-    parser.add_argument("--runs", type=int, default=3)
+    parser.add_argument("--runs", type=int, default=5)
 
     return parser.parse_args()
 
@@ -224,11 +224,19 @@ def main():
             # 1. Local listing: file count and total size
             listing_time, file_count, total_bytes = count_files_and_bytes(path)
 
-            # 2. S3 listing: same measure on the MinIO bucket
-            try:
-                s3_listing_time, s3_object_count, s3_total_bytes = list_s3_objects(s3_prefix)
-            except Exception:
-                s3_listing_time, s3_object_count, s3_total_bytes = None, None, None
+            # 2. S3 listing: median over runs repetitions
+            s3_listing_times = []
+            s3_object_count = None
+            s3_total_bytes = None
+            for _ in range(args.runs):
+                try:
+                    t, obj_count, total_b = list_s3_objects(s3_prefix)
+                    s3_listing_times.append(t)
+                    s3_object_count = obj_count
+                    s3_total_bytes = total_b
+                except Exception:
+                    pass
+            s3_listing_time = median(s3_listing_times) if s3_listing_times else None
 
             # 3. Upload/download throughput on a sample file from the layout
             sample_file = None
